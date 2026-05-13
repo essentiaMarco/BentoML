@@ -270,18 +270,9 @@ class PickleSerde(GenericSerde, Serde):
         return Payload(data, metadata)
 
     def deserialize_value(self, payload: Payload) -> t.Any:
-        if "buffer-lengths" not in payload.metadata:
-            return pickle.loads(b"".join(payload.data))
-        buffer_lengths = list(map(int, payload.metadata["buffer-lengths"].split(",")))
-        data_stream = b"".join(payload.data)
-        data = memoryview(data_stream)
-        start = buffer_lengths[0]
-        main_bytes = data[:start]
-        buffers: list[pickle.PickleBuffer] = []
-        for length in buffer_lengths[1:]:
-            buffers.append(pickle.PickleBuffer(data[start : start + length]))
-            start += length
-        return pickle.loads(main_bytes, buffers=buffers)
+        raise ValueError(
+            "Pickle deserialization from request payloads is disabled because it is unsafe."
+        )
 
 
 ALL_SERDE: t.Mapping[str, type[Serde]] = {
