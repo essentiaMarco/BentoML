@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import functools
+import hashlib
+import hmac
 import json
 import logging
+import os
 import pickle
 import traceback
 import typing as t
@@ -293,6 +296,18 @@ class RunnerAppFactory(BaseAppFactory):
 
             arg_num = int(request.headers["args-number"])
             r_: bytes = await request.body()
+
+            # RDSEC fix R-001: require HMAC over body before any pickle path
+            _secret = os.environ.get("BENTOML_RUNNER_HMAC_SECRET")
+            if not _secret:
+                return Response(
+                    "runner secret not configured",
+                    status_code=500,
+                )
+            _sig_hdr = request.headers.get("X-Bentoml-Signature", "")
+            _sig_exp = hmac.new(_secret.encode(), r_, hashlib.sha256).hexdigest()
+            if not hmac.compare_digest(_sig_hdr, _sig_exp):
+                return Response("unauthorized", status_code=401)
 
             if arg_num == 1:
                 params: Params[t.Any] = _deserialize_single_param(request, r_)
